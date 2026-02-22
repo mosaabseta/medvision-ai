@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MedVision AI - Real-Time Medical Procedure Assistant</title>
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+      color: white;
+      overflow-x: hidden;
+    }
+
+    .header {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 20px 40px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      font-weight: 600;
+    }
+
+    .header .logo {
+      width: 40px;
+      height: 40px;
+      margin-right: 15px;
+      background: linear-gradient(135deg, #4CAF50, #2E7D32);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 20px;
+    }
+
+    .nav-tab {
+      padding: 10px 20px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .nav-tab:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .nav-tab.active {
+      background: linear-gradient(135deg, #4CAF50, #2E7D32);
+      border-color: #4CAF50;
+    }
+
+    /* Status Indicator */
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #F44336;
+      display: inline-block;
+      animation: pulse-red 2s infinite;
+    }
+
+    .status-dot.ready {
+      background: #4CAF50;
+      animation: pulse-green 2s infinite;
+    }
+
+    @keyframes pulse-red {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.7); }
+      50% { box-shadow: 0 0 0 6px rgba(244, 67, 54, 0); }
+    }
+
+    @keyframes pulse-green {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
+      50% { box-shadow: 0 0 0 6px rgba(76, 175, 80, 0); }
+    }
+
+    .container {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 40px;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* NEW LAYOUT: Live Session Tab */
+    .live-layout {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 20px;
+      height: calc(100vh - 180px);
+    }
+
+    /* Top Row: Video + Voice */
+    .top-row {
+      display: grid;
+      grid-template-columns: 500px 1fr;
+      gap: 20px;
+      height: 400px;
+    }
+
+    .video-panel {
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 16px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      border-radius: 12px;
+      background: #000;
+      object-fit: contain;
+    }
+
+    .voice-panel {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 16px;
+      padding: 30px;
+    }
+
+    .status {
+      font-size: 18px;
+      opacity: 0.9;
+      text-align: center;
+    }
+
+    .mic-circle {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #4CAF50, #2E7D32);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 70px;
+      transition: all 0.3s;
+      box-shadow: 0 0 40px rgba(76, 175, 80, 0.6);
+      cursor: pointer;
+    }
+
+    .mic-circle.speaking {
+      background: linear-gradient(135deg, #00d4ff, #0077ff);
+      box-shadow: 0 0 60px rgba(0, 212, 255, 0.8);
+      transform: scale(1.05);
+    }
+
+    .mic-circle.disabled {
+      background: linear-gradient(135deg, #666, #444);
+      box-shadow: none;
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    .hint {
+      font-size: 14px;
+      opacity: 0.6;
+      text-align: center;
+      max-width: 400px;
+    }
+
+    /* Bottom Row: Findings Timeline */
+    .findings-panel {
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 16px;
+      padding: 25px;
+      overflow-y: auto;
+      min-height: 300px;
+    }
+
+    .findings-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .findings-header h3 {
+      font-size: 18px;
+      color: #4CAF50;
+      margin: 0;
+    }
+
+    .findings-list {
+      list-style: none;
+    }
+
+    .finding-item {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      border-left: 3px solid #4CAF50;
+    }
+
+    .finding-time {
+      font-size: 12px;
+      opacity: 0.6;
+      margin-bottom: 8px;
+    }
+
+    .finding-text {
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* Upload Tab */
+    .upload-section {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .upload-card {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 16px;
+      padding: 40px;
+      border: 2px dashed rgba(255, 255, 255, 0.2);
+      text-align: center;
+      margin-bottom: 30px;
+      transition: all 0.3s;
+    }
+
+    .upload-card:hover {
+      border-color: rgba(76, 175, 80, 0.5);
+      background: rgba(76, 175, 80, 0.05);
+    }
+
+    .upload-icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+    }
+
+    .upload-input {
+      display: none;
+    }
+
+    .upload-button {
+      background: linear-gradient(135deg, #4CAF50, #2E7D32);
+      color: white;
+      padding: 15px 40px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .upload-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(76, 175, 80, 0.4);
+    }
+
+    .upload-button:disabled {
+      background: #666;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+      text-align: left;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      color: white;
+      font-size: 14px;
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 15px;
+      display: none;
+    }
+
+    .progress-bar.active {
+      display: block;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4CAF50, #2E7D32);
+      width: 0%;
+      transition: width 0.3s;
+    }
+
+    .file-info {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 15px;
+      display: none;
+    }
+
+    .file-info.active {
+      display: block;
+    }
+
+    /* Sessions Tab */
+    .sessions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 20px;
+    }
+
+    .session-card {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.3s;
+      cursor: pointer;
+    }
+
+    .session-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 30px rgba(76, 175, 80, 0.2);
+      border-color: rgba(76, 175, 80, 0.5);
+    }
+
+    .session-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 15px;
+    }
+
+    .session-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .session-date {
+      font-size: 12px;
+      opacity: 0.6;
+    }
+
+    .status-badge {
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .status-badge.completed {
+      background: rgba(76, 175, 80, 0.2);
+      color: #4CAF50;
+    }
+
+    .status-badge.processing {
+      background: rgba(255, 193, 7, 0.2);
+      color: #FFC107;
+    }
+
+    .status-badge.pending {
+      background: rgba(158, 158, 158, 0.2);
+      color: #9E9E9E;
+    }
+
+    .session-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .action-button {
+      flex: 1;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 6px;
+      color: white;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.3s;
+    }
+
+    .action-button:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .action-button.primary {
+      background: linear-gradient(135deg, #4CAF50, #2E7D32);
+      border-color: #4CAF50;
+    }
+
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: #1a1f3a;
+      border-radius: 16px;
+      padding: 30px;
+      max-width: 600px;
+      max-height: 80vh;
+      overflow-y: auto;
+      position: relative;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      font-size: 24px;
+      cursor: pointer;
+      opacity: 0.6;
+      transition: opacity 0.3s;
+    }
+
+    .modal-close:hover {
+      opacity: 1;
+    }
+
+    .analysis-item {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      border-left: 3px solid #4CAF50;
+    }
+
+    .analysis-timestamp {
+      font-size: 12px;
+      opacity: 0.6;
+      margin-bottom: 8px;
+    }
+
+    .analysis-finding {
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .risk-indicator {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+
+    .risk-high {
+      background: rgba(244, 67, 54, 0.2);
+      color: #F44336;
+    }
+
+    .risk-medium {
+      background: rgba(255, 193, 7, 0.2);
+      color: #FFC107;
+    }
+
+    .risk-low {
+      background: rgba(76, 175, 80, 0.2);
+      color: #4CAF50;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      opacity: 0.6;
+    }
+
+    .empty-state-icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="header">
+    <div style="display: flex; align-items: center;">
+      <div class="logo" id="appLogo">🏥</div>
+      <h1>MedVision AI - Real-Time Medical Procedure Assistant</h1>
+    </div>
+    <div class="nav-tabs">
+      <div class="nav-tab active" onclick="switchTab('live')">
+        <span class="status-dot" id="liveStatusDot"></span>
+        Live Session
+      </div>
+      <div class="nav-tab" onclick="switchTab('upload')">📤 Upload Video</div>
+      <div class="nav-tab" onclick="switchTab('sessions')">📁 My Sessions</div>
+    </div>
+  </div>
+
+  <div class="container">
+    
+    <!-- Live Session Tab -->
+    <div id="live-tab" class="tab-content active">
+      <div class="live-layout">
+        
+        <!-- Top Row: Video + Voice -->
+        <div class="top-row">
+          <!-- Video Panel -->
+          <div class="video-panel">
+            <div id="videoLoadPrompt" style="background: rgba(0,0,0,0.5); padding: 30px; border-radius: 12px; text-align: center; height: 100%; display: flex; flex-direction: column; justify-content: center;">
+              <div style="font-size: 48px; margin-bottom: 20px;">📹</div>
+              <h3 style="margin-bottom: 15px;">Load Video for Live Analysis</h3>
+              <p style="opacity: 0.7; margin-bottom: 20px; font-size: 14px;">
+                Upload any medical procedure video to start real-time AI analysis
+              </p>
+              <input type="file" id="liveVideoInput" accept="video/*" style="display:none;" onchange="loadLiveVideo(event)">
+              <button class="upload-button" onclick="document.getElementById('liveVideoInput').click()">
+                📂 Select Video File
+              </button>
+            </div>
+
+            <video id="endoVideo" controls style="display: none;">
+              Your browser does not support the video tag.
+            </video>
+          </div>
+
+          <!-- Voice Panel -->
+          <div class="voice-panel">
+            <div class="status" id="statusText">Initializing Voice Session...</div>
+
+            <div class="mic-circle disabled" id="micCircle">
+              🎤
+            </div>
+
+            <div class="hint">
+              Speak anytime: "Clarify this", "What is visible?", "Explain the finding"
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Row: Findings -->
+        <div class="findings-panel">
+          <div class="findings-header">
+            <h3>🔬 AI Analysis Timeline</h3>
+            <button 
+              id="saveSessionBtn" 
+              onclick="saveLiveSession()" 
+              style="padding: 8px 16px; background: linear-gradient(135deg, #4CAF50, #2E7D32); border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 13px; display: none;"
+            >
+              💾 Save Session
+            </button>
+          </div>
+          <ul id="findingsList" class="findings-list">
+            <li style="opacity: 0.5; text-align: center; padding: 40px;">Load a video to start analysis...</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Upload Video Tab -->
+    <div id="upload-tab" class="tab-content">
+      <div class="upload-section">
+        <h2 style="margin-bottom: 30px; text-align: center;">Upload Procedure Video for Analysis</h2>
+
+        <div class="upload-card">
+          <div class="upload-icon">📹</div>
+          <h3 style="margin-bottom: 15px;">Select Video File</h3>
+          <p style="opacity: 0.7; margin-bottom: 20px;">
+            Supported formats: MP4, AVI, MOV (Max 2GB)
+          </p>
+          
+          <input type="file" id="videoFileInput" class="upload-input" accept="video/mp4,video/avi,video/quicktime" onchange="handleFileSelect(event)">
+          <button class="upload-button" onclick="document.getElementById('videoFileInput').click()">
+            Choose Video File
+          </button>
+
+          <div id="fileInfo" class="file-info">
+            <strong>Selected File:</strong>
+            <div id="fileName" style="margin-top: 8px;"></div>
+            <div id="fileSize" style="margin-top: 4px; opacity: 0.7;"></div>
+          </div>
+        </div>
+
+        <div style="background: rgba(0, 0, 0, 0.3); border-radius: 16px; padding: 30px;">
+          <h3 style="margin-bottom: 20px;">Procedure Details</h3>
+
+          <div class="form-group">
+            <label>Title *</label>
+            <input type="text" id="videoTitle" placeholder="e.g., Laparoscopic Cholecystectomy - Patient 12345">
+          </div>
+
+          <div class="form-group">
+            <label>Procedure Type *</label>
+            <select id="procedureType">
+              <option value="">Select procedure type</option>
+              <option value="angiography">Angiography</option>
+              <option value="angioplasty">Angioplasty</option>
+              <option value="appendectomy">Appendectomy</option>
+              <option value="arthroscopy">Arthroscopy</option>
+              <option value="bariatric_surgery">Bariatric Surgery</option>
+              <option value="bronchoscopy">Bronchoscopy</option>
+              <option value="cardiac_catheterization">Cardiac Catheterization</option>
+              <option value="cesarean_section">Cesarean Section</option>
+              <option value="cholecystectomy">Cholecystectomy (Gallbladder Removal)</option>
+              <option value="colonoscopy">Colonoscopy</option>
+              <option value="colposcopy">Colposcopy</option>
+              <option value="cystoscopy">Cystoscopy</option>
+              <option value="dermatologic_surgery">Dermatologic Surgery</option>
+              <option value="endoscopy_upper_gi">Endoscopy (Upper GI)</option>
+              <option value="ercp">ERCP (Endoscopic Retrograde Cholangiopancreatography)</option>
+              <option value="hysterectomy">Hysterectomy</option>
+              <option value="hysteroscopy">Hysteroscopy</option>
+              <option value="laparoscopy">Laparoscopy (General)</option>
+              <option value="laryngoscopy">Laryngoscopy</option>
+              <option value="mastectomy">Mastectomy</option>
+              <option value="neurosurgery">Neurosurgery</option>
+              <option value="ophthalmic_surgery">Ophthalmic Surgery</option>
+              <option value="orthopedic_surgery">Orthopedic Surgery</option>
+              <option value="otoscopy">Otoscopy</option>
+              <option value="plastic_surgery">Plastic Surgery</option>
+              <option value="sigmoidoscopy">Sigmoidoscopy</option>
+              <option value="thoracoscopy">Thoracoscopy (VATS)</option>
+              <option value="ureteroscopy">Ureteroscopy</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Description (Optional)</label>
+            <textarea id="videoDescription" placeholder="Additional notes about the procedure..."></textarea>
+          </div>
+
+          <button class="upload-button" id="uploadBtn" onclick="uploadVideo()" style="width: 100%; margin-top: 10px;" disabled>
+            Upload & Start Analysis
+          </button>
+
+          <div class="progress-bar" id="uploadProgress">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+
+          <div id="uploadStatus" style="margin-top: 15px; text-align: center;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sessions Tab -->
+    <div id="sessions-tab" class="tab-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <h2>My Video Sessions</h2>
+        <button class="upload-button" onclick="switchTab('upload')">
+          ➕ Upload New Video
+        </button>
+      </div>
+
+      <div id="sessionsGrid" class="sessions-grid">
+        <div class="empty-state">
+          <div class="empty-state-icon">📂</div>
+          <p>Loading sessions...</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Analysis Modal -->
+  <div id="analysisModal" class="modal">
+    <div class="modal-content">
+      <span class="modal-close" onclick="closeModal()">×</span>
+      <h2 id="modalTitle" style="margin-bottom: 20px;"></h2>
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
+  <!-- Authentication Overlay -->
+  <div id="authOverlay" style="
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+  ">
+    <div style="
+      background: rgba(0, 0, 0, 0.5);
+      padding: 50px;
+      border-radius: 20px;
+      border: 1px solid rgba(76, 175, 80, 0.3);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      text-align: center;
+      max-width: 420px;
+      width: 90%;
+    ">
+      <div class="logo" style="margin: 0 auto 20px; width: 80px; height: 80px; font-size: 40px; background: linear-gradient(135deg, #4CAF50, #2E7D32); border-radius: 16px; display: flex; align-items: center; justify-content: center;">🏥</div>
+      <h2 style="margin-bottom: 10px; font-size: 28px;">MedVision AI</h2>
+      <p style="opacity: 0.7; margin-bottom: 30px; font-size: 14px;">Real-Time Medical Procedure Assistant</p>
+      
+      <div style="text-align: left; margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 8px; font-size: 14px; opacity: 0.8;">Email Address</label>
+        <input 
+          type="email" 
+          id="authEmail" 
+          placeholder="Enter your email"
+          autocomplete="email"
+          style="
+            width: 100%;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+          "
+          onkeypress="if(event.key === 'Enter') document.getElementById('authCode').focus()"
+        >
+      </div>
+      
+      <div style="text-align: left; margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 8px; font-size: 14px; opacity: 0.8;">Access Code</label>
+        <input 
+          type="password" 
+          id="authCode" 
+          placeholder="Enter access code"
+          autocomplete="current-password"
+          style="
+            width: 100%;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+            text-align: center;
+            letter-spacing: 2px;
+          "
+          onkeypress="if(event.key === 'Enter') authenticate()"
+        >
+      </div>
+      
+      <button 
+        onclick="authenticate()"
+        style="
+          width: 100%;
+          padding: 15px;
+          background: linear-gradient(135deg, #4CAF50, #2E7D32);
+          border: none;
+          border-radius: 8px;
+          color: white;
+          font-size: 16px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s;
+        "
+        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 20px rgba(76, 175, 80, 0.4)';"
+        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';"
+      >
+        Access System
+      </button>
+      
+      <div id="authError" style="
+        margin-top: 15px;
+        padding: 12px;
+        background: rgba(244, 67, 54, 0.2);
+        border: 1px solid rgba(244, 67, 54, 0.3);
+        border-radius: 6px;
+        color: #F44336;
+        font-size: 14px;
+        display: none;
+      ">
+        Invalid email or access code. Please try again.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ========================================
+    // AUTHENTICATION SYSTEM
+    // ========================================
+    // Add authorized users here: { email: 'code' }
+    const AUTHORIZED_USERS = {
+      'admin@medvision.ai': 'GI2024',
+      'doctor@hospital.com': 'MED2024',
+      'demo@example.com': 'DEMO2024',
+      // Add more users below:
+      // 'user@email.com': 'CODE123',
+    };
+    
+    function authenticate() {
+      const emailInput = document.getElementById('authEmail');
+      const codeInput = document.getElementById('authCode');
+      const error = document.getElementById('authError');
+      const overlay = document.getElementById('authOverlay');
+      
+      const email = emailInput.value.trim().toLowerCase();
+      const code = codeInput.value.trim();
+      
+      // Check if email exists and code matches
+      if (AUTHORIZED_USERS[email] && AUTHORIZED_USERS[email] === code) {
+        // Success - hide overlay
+        overlay.style.opacity = '0';
+        overlay.style.transition = 'opacity 0.5s';
+        setTimeout(() => {
+          overlay.style.display = 'none';
+        }, 500);
+        
+        // Store auth session with email
+        sessionStorage.setItem('medvision_auth', 'true');
+        sessionStorage.setItem('medvision_user', email);
+        
+        console.log('✅ Authenticated:', email);
+      } else {
+        // Error
+        error.style.display = 'block';
+        codeInput.value = '';
+        emailInput.style.borderColor = 'rgba(244, 67, 54, 0.5)';
+        codeInput.style.borderColor = 'rgba(244, 67, 54, 0.5)';
+        
+        // Shake animation
+        emailInput.style.animation = 'shake 0.5s';
+        codeInput.style.animation = 'shake 0.5s';
+        
+        setTimeout(() => {
+          emailInput.style.animation = '';
+          codeInput.style.animation = '';
+          emailInput.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+          codeInput.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+        }, 500);
+        
+        console.log('❌ Authentication failed for:', email);
+      }
+    }
+    
+    // Check if already authenticated
+    if (sessionStorage.getItem('medvision_auth') === 'true') {
+      document.getElementById('authOverlay').style.display = 'none';
+      const user = sessionStorage.getItem('medvision_user');
+      console.log('🔓 Already authenticated:', user);
+    }
+    
+    // Add shake animation
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-10px); }
+        75% { transform: translateX(10px); }
+      }
+    `;
+    document.head.appendChild(style);
+  </script>
+
+  <script src="/static/app.js"></script>
+
+</body>
+</html>
