@@ -14,7 +14,7 @@
 
 ## 📺 Demo
 
-**[▶️ Watch 3-Minute Video Demo](https://youtu.be/Ri0M-P04y5c)**
+**[▶️ Watch 3-Minute Video Demo]((https://youtu.be/Ri0M-P04y5c))**
 
 **[🚀 Try Live Demo](https://medvisor)** *(active through March 24, 2026)*
 
@@ -177,8 +177,6 @@ We achieved production-grade performance through multiple optimizations:
 3. **Smart Frame Sampling** - Keyframes + deduplication = 30% fewer frames
 4. **Batch Processing** - Process 10 frames simultaneously (8.5x throughput)
 5. **Prompt Engineering** - 94% structured output success rate
-
-See [benchmarks/README.md](benchmarks/README.md) for full performance analysis.
 
 ---
 
