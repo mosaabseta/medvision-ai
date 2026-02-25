@@ -14,7 +14,7 @@
 
 ## 📺 Demo
 
-**[▶️ Watch 3-Minute Video Demo](https://youtube.com/watch?v=YOUR-VIDEO-ID)**
+**[▶️ Watch 3-Minute Video Demo]((https://youtu.be/Ri0M-P04y5c))**
 
 **[🚀 Try Live Demo](https://medvisor)** *(active through March 24, 2026)*
 
@@ -81,8 +81,6 @@ Open browser: `http://localhost:8000`
 
 - **[Setup Guide](docs/SETUP.md)** - Detailed installation instructions
 - **[Architecture](docs/ARCHITECTURE.md)** - System design and components
-- **[API Reference](docs/API.md)** - Endpoint documentation
-- **[Benchmarks](benchmarks/README.md)** - Performance verification
 - **[Competition Submission](docs/COMPETITION.md)** - Challenge details
 
 ---
@@ -179,8 +177,6 @@ We achieved production-grade performance through multiple optimizations:
 3. **Smart Frame Sampling** - Keyframes + deduplication = 30% fewer frames
 4. **Batch Processing** - Process 10 frames simultaneously (8.5x throughput)
 5. **Prompt Engineering** - 94% structured output success rate
-
-See [benchmarks/README.md](benchmarks/README.md) for full performance analysis.
 
 ---
 
@@ -291,8 +287,8 @@ This project was built for the **MedGemma Impact Challenge** by Google HAI-DEF.
 - ✅ High-quality execution (working demo, comprehensive documentation)
 
 **Submission Materials:**
-- Video: [3-minute demo](https://youtube.com/watch?v=YOUR-VIDEO)
-- Writeup: [Kaggle submission](https://kaggle.com/code/yourwriteup)
+- Video: [3-minute demo]((https://youtu.be/Ri0M-P04y5c))
+- Writeup: [Kaggle submission](https://www.kaggle.com/competitions/med-gemma-impact-challenge/writeups/medvision-ai-real-time-medical-procedure-assistan)
 - Code: This repository
 
 ---
@@ -345,7 +341,7 @@ LinkedIn: https://www.linkedin.com/in/mosaab-agrof-219478364/
 
 ## ⭐ Star this repo if you find it useful!
 
-**[Try the live demo](https://medvisor.fyi)** • **[Watch the video](https://youtube.com/watch?v=YOUR-VIDEO)** • **[Read the writeup](docs/COMPETITION.md)**
+**[Try the live demo](https://medvisor.fyi)** • **[Watch the video](https://youtu.be/Ri0M-P04y5c)** • **[Read the writeup](https://www.kaggle.com/competitions/med-gemma-impact-challenge/writeups/medvision-ai-real-time-medical-procedure-assistan)**
 
 ---
 
