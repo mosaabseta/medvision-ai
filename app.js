@@ -220,17 +220,31 @@ async function loadLiveVideo(event) {
     
     // ✅ Start voice session NOW (after video ready)
     startVoiceSession();
+
+    
     
     // Try to play
     videoEl.play().then(() => {
       console.log("▶️ Video playing automatically");
       if (statusText) statusText.innerText = "👂 Listening...";
+     startFrameCapture();
+      
     }).catch(err => {
       console.log("⏸ Autoplay prevented - click play button");
       if (statusText) statusText.innerText = "📹 Click play button to start";
     });
   }, { once: true });
-  
+  videoEl.addEventListener('ended', () => {
+  console.log('🏁 Video ended');
+  stopFrameCapture();
+});
+
+
+
+videoEl.addEventListener('play', () => {
+  console.log('▶️ Video resumed');
+  startFrameCapture();
+});
   // Handle errors
   videoEl.addEventListener('error', (e) => {
     console.error("Video loading error:", e);
@@ -267,6 +281,7 @@ async function loadLiveVideo(event) {
           errorMsg += 'Unknown error occurred.';
       }
     }
+    
     
     // Try re-encoding if codec issue
     if (shouldRetry && !videoFile.wasConverted) {
@@ -580,7 +595,7 @@ async function refreshTimeline() {
 }
 
 // Call refreshTimeline every 4 seconds
-setInterval(refreshTimeline, 4000);
+setInterval(refreshTimeline, 2000);
 
 // Add CSS for risk badges (add to your HTML <style> section)
 const riskBadgeStyles = `
@@ -653,7 +668,7 @@ function extractCleanFinding(text) {
   return cleaned.substring(0, 200) + (cleaned.length > 200 ? '...' : '');
 }
 
-setInterval(refreshTimeline, 2000);
+
 
 
 let procedureEnded = false;
@@ -755,6 +770,39 @@ async function startLiveSession() {
     return data.session_id;
   } catch (error) {
     console.error('Failed to start session:', error);
+  }
+}
+
+// Add this AFTER startLiveSession() function (around line 750)
+
+let frameIntervalId = null;
+
+// Start capturing frames every 3 seconds
+function startFrameCapture() {
+  // Stop any existing interval
+  if (frameIntervalId) {
+    clearInterval(frameIntervalId);
+  }
+  
+  console.log('📸 Starting frame capture (every 3 seconds)');
+  
+  // Capture first frame immediately
+  sendSnapshot();
+  
+  // Then capture every 2 seconds
+  frameIntervalId = setInterval(() => {
+    if (video && !video.paused && !video.ended && videoReady) {
+      sendSnapshot();
+    }
+  }, 2000); // Every 2 seconds
+}
+
+// Stop frame capture
+function stopFrameCapture() {
+  if (frameIntervalId) {
+    clearInterval(frameIntervalId);
+    frameIntervalId = null;
+    console.log('⏹ Frame capture stopped');
   }
 }
 
@@ -959,17 +1007,6 @@ class WebSocketVoiceSession {
 
 let voiceSession = null;
 
-async function startVoiceSession() {
-  try {
-    console.log('🎙️ Starting voice session...');
-    voiceSession = new WebSocketVoiceSession();
-    window.voiceSession = voiceSession;
-    await voiceSession.initialize();
-    console.log('✅ Voice session initialized');
-  } catch (error) {
-    console.error('❌ Failed to start voice:', error);
-  }
-}
 
 
 // Global voice session instance

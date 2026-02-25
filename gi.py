@@ -6,7 +6,14 @@ import io
 from medgemma_engine import MedGemmaEngine
 from timeline_store import TimelineStore
 from prompts import GI_SNAPSHOT_PROMPT, GI_CLARIFY_PROMPT
-
+import re
+import io
+from datetime import datetime
+from PIL import Image
+from fastapi import UploadFile, Depends
+from sqlalchemy.orm import Session
+from database import get_db
+from models import FrameAnalysis, VideoSession
 import asyncio
 import websockets
 import json
@@ -67,105 +74,107 @@ def clean_medgemma_output(raw_output: str) -> str:
     return cleaned
 
 def extract_structured_answer(text: str) -> str:
-    """
-    Extract structured finding from MedGemma output
-    Returns formatted string or empty string if not found
-    """
-    import re
-    
-    # First clean the text
-    cleaned = clean_medgemma_output(text)
-    
-    # ✅ Extract structured components (flexible pattern)
-    # Handles both "Risk Level:" and "Risk Level (Low/Medium/High):"
-    pattern = re.compile(
-        r"Finding:\s*(.*?)\s*\n"
-        r"\s*Location:\s*(.*?)\s*\n"
-        r"\s*Risk(?:\s+Level)?(?:\s*\(Low/Medium/High\))?:\s*(.*?)\s*\n"
-        r"\s*Suggested (?:Next Step|Action):\s*(.*?)(?:\n|$)",
-        re.DOTALL | re.IGNORECASE
-    )
+    import json, re
 
-    match = pattern.search(cleaned)
+    # MedGemma is returning JSON blocks — parse those first
+    json_match = re.search(r'```json\s*(\{.*?\})\s*```', text, re.DOTALL)
+    if json_match:
+        try:
+            data = json.loads(json_match.group(1))
+            finding  = data.get("Finding", "").strip()
+            location = data.get("Location", "").strip()
+            risk     = data.get("Risk Level", "Low").strip()
+            action   = data.get("Suggested Next Step", "").strip()
+            if finding and finding.lower() != "no findings.":
+                return f"Finding: {finding}\nLocation: {location}\nRisk Level: {risk}\nSuggested Action: {action}"
+        except Exception:
+            pass
+
+    # Fallback: original structured text pattern
+    pattern = re.compile(
+        r"Finding:\s*(.*?)\n"
+        r"Location:\s*(.*?)\n"
+        r"Risk Level:\s*(.*?)\n"
+        r"Suggested Action:\s*(.*?)(?:\n|$)",
+        re.DOTALL
+    )
+    match = pattern.search(text)
     if match:
-        finding = match.group(1).strip()
-        location = match.group(2).strip()
-        risk = match.group(3).strip()
-        action = match.group(4).strip()
-        
-        # ✅ VALIDATION: Must have actual content in finding
-        # Skip if finding is empty or just whitespace
-        if not finding or len(finding) < 3:
-            print(f"⚠️ Skipping - empty finding")
-            return ""
-        
-        # Skip if finding contains prompt artifacts
-        if any(word in finding.lower() for word in ['medgemma', 'analyze', 'endoscopist']):
-            print(f"⚠️ Skipping - prompt artifact in finding")
-            return ""
-        
         return "\n".join([
-            f"Finding: {finding}",
-            f"Location: {location}",
-            f"Risk Level: {risk}",
-            f"Suggested Action: {action}",
+            f"Finding: {match.group(1).strip()}",
+            f"Location: {match.group(2).strip()}",
+            f"Risk Level: {match.group(3).strip()}",
+            f"Suggested Action: {match.group(4).strip()}",
         ])
-    
-    print(f"⚠️ No structured pattern matched")
+
     return ""
 
-
 @router.post("/snapshot")
-async def snapshot(file: UploadFile):
-    global latest_frame
+async def snapshot(file: UploadFile, db: Session = Depends(get_db)):
+    global latest_frame, current_session_id
 
     try:
         img_bytes = await file.read()
         image = Image.open(io.BytesIO(img_bytes)).convert("RGB")
         latest_frame = image
 
-        # Get raw output from MedGemma
         output = engine.analyze(image, GI_SNAPSHOT_PROMPT)
         
-        print(f"\n📸 Raw MedGemma output ({len(output)} chars):")
-        print(f"---\n{output[:200]}...\n---")
+        print(f"\n===== MEDGEMMA RAW OUTPUT =====")
+        print(output[:500] if len(output) > 500 else output)
+        print("=" * 32)
         
-        # Extract structured answer
+        # Try to extract structured format, fall back to raw output
         clean = extract_structured_answer(output)
+        # AFTER (only save if we have a clean structured result):
+        result = clean if clean else None
+
+        if not result:
+            print("⚠️ No structured finding extracted — skipping timeline")
+            return {"status": "ok", "result": "No significant findings detected"}
+
+        timeline.add(result)
         
-        # Use cleaned version if available
-        if clean:
-            result = clean
-            print(f"✅ Extracted structured finding:")
-            print(f"---\n{result}\n---")
+        if not result or len(result) < 5:
+            return {"status": "ok", "result": "No significant findings detected"}
+        
+        print(f"\n===== FINAL RESULT =====")
+        print(result[:300] if len(result) > 300 else result)
+        print("=" * 24)
+        
+        # Always add to timeline
+        timeline.add(result)
+        print(f"💾 Added to in-memory timeline (total: {len(timeline.all())})")
+        
+        # Save to database if we have an active session
+        if current_session_id:
+            try:
+                finding_match = re.search(r'Finding:\s*(.+?)(?:\n|$)', result)
+                location_match = re.search(r'Location:\s*(.+?)(?:\n|$)', result)
+                risk_match = re.search(r'Risk Level:\s*(Low|Medium|High)', result, re.IGNORECASE)
+                action_match = re.search(r'Suggested Action:\s*(.+?)(?:\n|$)', result)
+                
+                import uuid
+                analysis = FrameAnalysis(
+                    id=str(uuid.uuid4()),
+                    frame_id=str(uuid.uuid4()),  # ← generate a standalone frame_id for live snapshots
+                    session_id=current_session_id,
+                    model_name="medgemma-4b",
+                    finding=finding_match.group(1).strip() if finding_match else result[:200],
+                    anatomical_location=location_match.group(1).strip() if location_match else "Unknown",
+                    risk_level=risk_match.group(1).strip() if risk_match else "Low",
+                    suggested_action=action_match.group(1).strip() if action_match else "Continue observation",
+                    raw_output=result,
+                    confidence_score=0.85
+                )
+                db.add(analysis)
+                db.commit()
+                print(f"💾 Saved to database (session: {current_session_id[:8]}...)")
+            except Exception as db_error:
+                print(f"⚠️ Database save failed (non-critical): {db_error}")
+                db.rollback()
         else:
-            # Fallback: try basic cleaning
-            result = clean_medgemma_output(output)
-            
-            # If still nothing useful, skip
-            if not result or len(result) < 10:
-                print(f"⚠️ No meaningful finding - skipping timeline")
-                return {"status": "ok", "result": "No significant findings detected"}
-            
-            print(f"⚠️ Using cleaned raw output:")
-            print(f"---\n{result[:200]}...\n---")
-        
-        # ✅ STRICT VALIDATION before adding to timeline
-        # Must have actual content and not be prompt text
-        should_add = (
-            result and 
-            len(result) > 15 and 
-            not result.startswith('Finding:\nLocation:') and  # Empty structure
-            'Finding:' in result and  # Must have actual finding
-            not any(word in result.lower() for word in ['you are medgemma', 'analyze this', 'endoscopist'])
-        )
-        
-        if should_add:
-            timeline.add(result)
-            print(f"💾 Added to timeline")
-        else:
-            print(f"⚠️ Validation failed - not adding to timeline")
-            print(f"   Length: {len(result)}, Has 'Finding:': {'Finding:' in result}")
+            print(f"⚠️ No active session — call /api/gi/session/start first")
         
         return {"status": "ok", "result": result}
         
@@ -176,7 +185,6 @@ async def snapshot(file: UploadFile):
         return {"status": "error", "result": f"Analysis failed: {str(e)}"}
 
 
-# ===== UPDATED TIMELINE ENDPOINT =====
 
 @router.get("/timeline")
 def get_timeline():
