@@ -14,7 +14,7 @@
 
 ## 📺 Demo
 
-**[▶️ Watch 3-Minute Video Demo]((https://youtu.be/Ri0M-P04y5c))**
+**[▶️ Watch 3-Minute Video Demo]((https://youtu.be/bB6a30PUKz4))**
 
 **[🚀 Try Live Demo](https://medvisor)** *(active through March 24, 2026)*
 
@@ -287,7 +287,7 @@ This project was built for the **MedGemma Impact Challenge** by Google HAI-DEF.
 - ✅ High-quality execution (working demo, comprehensive documentation)
 
 **Submission Materials:**
-- Video: [3-minute demo]((https://youtu.be/Ri0M-P04y5c))
+- Video: [3-minute demo]((https://youtu.be/bB6a30PUKz4))
 - Writeup: [Kaggle submission](https://www.kaggle.com/competitions/med-gemma-impact-challenge/writeups/medvision-ai-real-time-medical-procedure-assistan)
 - Code: This repository
 
@@ -341,7 +341,7 @@ LinkedIn: https://www.linkedin.com/in/mosaab-agrof-219478364/
 
 ## ⭐ Star this repo if you find it useful!
 
-**[Try the live demo](https://medvisor.fyi)** • **[Watch the video](https://youtu.be/Ri0M-P04y5c)** • **[Read the writeup](https://www.kaggle.com/competitions/med-gemma-impact-challenge/writeups/medvision-ai-real-time-medical-procedure-assistan)**
+**[Try the live demo](https://medvisor.fyi)** • **[Watch the video](https://youtu.be/bB6a30PUKz4)** • **[Read the writeup](https://www.kaggle.com/competitions/med-gemma-impact-challenge/writeups/medvision-ai-real-time-medical-procedure-assistan)**
 
 ---
 
