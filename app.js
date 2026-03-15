@@ -1592,14 +1592,23 @@ async function viewAnalysis(sessionId) {
 async function downloadExport(sessionId) {
   try {
     const response = await fetch(`/api/v1/videos/${sessionId}/export`);
-    const data = await response.json();
-    
-    // For local filesystem, we'll create a direct download link
-    window.open(data.download_url, '_blank');
-    
-  } catch (error) {
-    console.error('Error downloading export:', error);
-    alert('Error downloading export. Please try again.');
+    if (!response.ok) {
+      const err = await response.json();
+      alert("Export error: " + (err.detail || response.status));
+      return;
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "export_" + sessionId + ".zip";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error("Error downloading export:", e);
+    alert("Download failed.");
   }
 }
 
